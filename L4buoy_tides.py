@@ -25,7 +25,7 @@ import calendar
 
 import subprocess
 from dateutil import parser
-import SpectralSplit
+#import SpectralSplit
 import scipy.integrate
 import os
 import sys
@@ -68,16 +68,9 @@ def main():
 
 ##  Create Parser instructions
     aparser = argparse.ArgumentParser()
-    # TIDE
-    aparser.add_argument("-t", "--tidal", action="store_true", help="Tidal model - REQUIRED: TEXT FILE CONTAINING TIDAL DATA FROM COASTAL OBSERVATORY")
-    aparser.add_argument("-d", "--datum", action="store", type=float, help="Depth in metres to datum below Mean Spring tide")
-    aparser.add_argument("-dp", "--datum_percentage", action="store", type=float, help="Depth percentage of tidal range for Mean Spring tide")
-
     aparser.add_argument("-o", "--output", action="store_true", help="generate output file(s)")
 
     # MODEL PARAMETERS
-    aparser.add_argument("-T", "--time", action="store", type=float, help="Time increment in decimal hours i.e. 0.25 = 15 minutes")
-
     aparser.add_argument("-start", "--start", action="store", type=str, help="Start Date (yyyy-mm-dd)")
     aparser.add_argument("-end", "--end", action="store", type=str, help="End Date (yyyy-mm-dd)")
 
@@ -85,7 +78,6 @@ def main():
 
     # Assign empty variables
     TL = []; t = []; waterdepth = []; tide_h = []; ftide_h = []; Zc = []
-    #all_tide_times = []
 
     if args.start:
        start_date = args.start; print("Start date: ", start_date)
@@ -123,135 +115,107 @@ def main():
     latitude_deg = 50.27; longitude_deg = -4.13
     Tide_fname = "TidePlymouth_L1.csv"
     
-    t_incr = args.time
+    # Check to see if the harmonics file exists
+    L4_harmonics_file_exists = os.path.exists('L4_tidal_harmonics.pkl')
+    if L4_harmonics_file_exists:
+       print('L4 harmonics file exists as pkl')
+       with open('L4_tidal_harmonics.pkl', 'rb') as bunch:
+          c = pickle.load(bunch)	
+    else:
+       ##  Read in tidal data 
+       ##  https://www.tide-forecast.com/ - good site for eyeballing how accurately the tide is recreated.
+       print('Running tidal model...')
+       print(' using tidegauge data to generate tidal coefficients')
+       tidepath = os.getcwd() + "/Required/TideGauge/" + Tide_fname # path of data file output
+       tides_ = pd.read_csv(tidepath, delimiter=',', engine='python') #usecols=np.arange(16,48), engine='python')
+       df = pd.DataFrame(tides_)
+       for i in range(len(tides_)):
 
-    if (args.tidal):
-        
-        print('Running tidal model...')
+          ##   Convert/alter DataFrame Variables to type datetime and float
+          tide_date = df.iloc[i,0]
+          tide_level =df.iloc[i,1]
+          tide_level = float(tide_level)
 
-        if args.datum_percentage:
-            datum_percentage = args.datum_percentage
-        else:
-            datum_percentage = 0.1
-        
-##      Read in tidal data 
-##      Tidal data from a variety of sources 
-##      1. PSMSL
-##         https://www.psmsl.org/data/
-##      2. University of Hawaii Sea Level Centre
-##         http://uhslc.soest.hawaii.edu/data/
-##      3. Generate data from the TPXO data files 
-##         https://tpxows.azurewebsites.net/  
-##         ==> generate weekly tidal data, multiple times and then create a ?_L1.csv file from about a month's worth of data
-##      Use routines found in the Tide_PrePro directory and create a suitable ?_L1.csv file
-##      Put data in Model/Required/TideGauge directory
+          ##   Convert date to datetime format
+          T = datetime.datetime.strptime(tide_date, '%Y/%m/%d %H:%M:%S') # All stations to a standard timestamp
+          ##   append variables to lists
+          TL.append(tide_level)
+          t.append(T)
 
-##      https://www.tide-forecast.com/ - good site for eyeballing how accurately the tide is recreated.
+       ##  Convert time back to DataFrame
+       t_df = pd.to_datetime(t)
+       ##  Convert time to format of UTide ##'date2num' function only seems to work with pandas DF ##
+       time = mdates.date2num(t_df.to_pydatetime())
 
-        print('     using tidegauge data for tidal coefficients')
-        tidepath = os.getcwd() + "/Required/TideGauge/" + Tide_fname # path of data file output
-        tides_ = pd.read_csv(tidepath, delimiter=',', engine='python') #usecols=np.arange(16,48), engine='python')
-        df = pd.DataFrame(tides_)
-        for i in range(len(tides_)):
+       # Calculate the tidal coefficients from tide gauge data 
+       tide = np.array(TL, dtype=float)
 
-##       Convert/alter DataFrame Variables to type datetime and float
-           tide_date = df.iloc[i,0]
-           tide_level =df.iloc[i,1]
-           tide_level = float(tide_level)
+       print("Calculate L4 harmonics and save as pkl")
+       c = utide.solve(time, u=tide, v=None, lat=latitude_deg,
+    		       nodal=False,
+    		       trend=False,
+    		       method='ols',
+    		       conf_int='linear',
+    		       Rayleigh_min=0.95)
+    
+       with open('L4_tidal_harmonics.pkl', 'wb') as bunch:
+          pickle.dump(c, bunch, protocol=pickle.HIGHEST_PROTOCOL)
 
-##       Convert date to datetime format
-           T = datetime.datetime.strptime(tide_date, '%Y/%m/%d %H:%M:%S') # All stations to a standard timestamp
-##       append variables to lists
-           TL.append(tide_level)
-           t.append(T)
+    # 1. Generate list of date & time for time period of interest at 1 hour resolution
+    dts = (pd.DataFrame(columns=['NULL'],index=pd.date_range(start_date, end_date,freq='1T')).between_time('00:00','23:59').index.strftime('%Y-%m-%d %H:%M:%S').tolist())
+    tidetime = pd.to_datetime(dts)
+    time = mdates.date2num(tidetime.to_pydatetime())
+    # 2. Reconstruct the tide over that period so can determine datum more satisfactorily
+    TCreconst = utide.reconstruct(time, c)
+    TL = TCreconst.h
+    print(' finished tidal model')
+    
+    # now determine times of high and low water
+    low_tide = argrelextrema(TL, np.less)
+    high_tide = argrelextrema(TL, np.greater)
+    
+    low_tide_times = tidetime[low_tide]; low_tide_values = TL[low_tide]
+    high_tide_times = tidetime[high_tide]; high_tide_values = TL[high_tide]
+    
+    # join the tide times together into an unsorted array
+    all_tide_times = np.concatenate((low_tide_times, high_tide_times), axis=None)
+    # join the tide level together
+    all_tide_heights = np.concatenate((TL[low_tide], TL[high_tide]), axis=None)
 
-##      Convert time back to DataFrame
-        t_df = pd.to_datetime(t)
-##      Convert time to format of UTide ##'date2num' function only seems to work with pandas DF ##
-        time = mdates.date2num(t_df.to_pydatetime())
+    # find the sorted indices
+    sorted_tide_time_order = np.argsort(all_tide_times)
 
-        # Calculate the tidal coefficients from tide gauge data 
-        tide = np.array(TL, dtype=float)
-        
-        # Check to see if the harmonics file exists
-        L4_harmonics_file_exists = os.path.exists('L4_tidal_harmonics.pkl')
-        if L4_harmonics_file_exists:
-           print("L4 harmonics file exists as pkl")
-           with open('L4_tidal_harmonics.pkl', 'rb') as bunch:
-              c = pickle.load(bunch)        
-        else:
-           print("Calculate L4 harmonics and save as pkl")
-           c = utide.solve(time, u=tide, v=None, lat=latitude_deg,
-                           nodal=False,
-                           trend=False,
-                           method='ols',
-                           conf_int='linear',
-                           Rayleigh_min=0.95)
-        
-           with open('L4_tidal_harmonics.pkl', 'wb') as bunch:
-              pickle.dump(c, bunch, protocol=pickle.HIGHEST_PROTOCOL)
-
-        # 1. Generate list of date & time for time period of interest at 1 hour resolution
-        dts = (pd.DataFrame(columns=['NULL'],index=pd.date_range(start_date, end_date,freq='1T')).between_time('00:00','23:59').index.strftime('%Y-%m-%d %H:%M:%S').tolist())
-        tidetime = pd.to_datetime(dts)
-        time = mdates.date2num(tidetime.to_pydatetime())
-        # 2. Reconstruct the tide over that period so can determine datum more satisfactorily
-        TCreconst = utide.reconstruct(time, c)
-        TL = TCreconst.h
-
-        if args.datum:
-            datum = args.datum
-        else:
-            datum = round((min(TL) + (max(TL) - min(TL))*datum_percentage),2)
-            
-        print('     finished tidal model...')
-        
-        # now determine times of high and low water
-        low_tide = argrelextrema(TL, np.less)
-        high_tide = argrelextrema(TL, np.greater)
-        
-        low_tide_times = tidetime[low_tide]; low_tide_values = TL[low_tide]
-        high_tide_times = tidetime[high_tide]; high_tide_values = TL[high_tide]
-        
-        # join the tide times together into an unsorted array
-        all_tide_times = np.concatenate((low_tide_times, high_tide_times), axis=None)
-        # join the tide level together
-        all_tide_heights = np.concatenate((TL[low_tide], TL[high_tide]), axis=None)
-
-        # find the sorted indices
-        sorted_tide_time_order = np.argsort(all_tide_times)
-
-        sorted_tide_time = np.sort(all_tide_times)
-        sorted_tide_heights = all_tide_heights[sorted_tide_time_order]
-        
-        low_tide_label = ['Low'] *len(TL[low_tide])
-        high_tide_label = ['High'] *len(TL[high_tide])
-        all_tide_labels = np.concatenate((low_tide_label, high_tide_label))
-        
-        sorted_tide_labels = all_tide_labels[sorted_tide_time_order]
-        
-        # Output dataframe
-        df_out = pd.DataFrame()
-        df_out['Time(UTC)'] = sorted_tide_time
-        df_out['Height(m)'] = sorted_tide_heights
-        df_out['Hi/Lo'] = sorted_tide_labels
-        
-        # Calculate the tidal offset at L4
-        # Only want to pass through the high water times here
-        slack_times = tidal_offset(sorted_tide_heights[sorted_tide_labels == 'High'], 
-                                     sorted_tide_time[sorted_tide_labels == 'High'])
-        
-        # issue if there are more slack waters in the given period than Hi / Lo tides
-        sorted_slack_times = np.sort(slack_times)
-        if (len(sorted_slack_times) > len(sorted_tide_time)):
-           sorted_slack_times = sorted_slack_times[:-1]
-         
-        df_out['Slack(UTC)'] = pd.to_datetime(pd.Series(sorted_slack_times))
-        
-        if args.output:
-           df_out.to_csv('Output/L4buoy_tides.txt', sep=' ', index=False, float_format='%.2f')
-        
-        sys.exit(0)
+    sorted_tide_time = np.sort(all_tide_times)
+    sorted_tide_heights = all_tide_heights[sorted_tide_time_order]
+    
+    low_tide_label = ['Low'] *len(TL[low_tide])
+    high_tide_label = ['High'] *len(TL[high_tide])
+    all_tide_labels = np.concatenate((low_tide_label, high_tide_label))
+    
+    sorted_tide_labels = all_tide_labels[sorted_tide_time_order]
+    
+    # Output dataframe
+    df_out = pd.DataFrame()
+    df_out['Time(UTC)'] = sorted_tide_time
+    df_out['Height(m)'] = sorted_tide_heights
+    df_out['Hi/Lo'] = sorted_tide_labels
+    
+    # Calculate the tidal offset at L4
+    # Only want to pass through the high water times here
+    slack_times = tidal_offset(sorted_tide_heights[sorted_tide_labels == 'High'], 
+    				 sorted_tide_time[sorted_tide_labels == 'High'])
+    
+    # issue if there are more slack waters in the given period than Hi / Lo tides
+    sorted_slack_times = np.sort(slack_times)
+    if (len(sorted_slack_times) > len(sorted_tide_time)):
+       sorted_slack_times = sorted_slack_times[:-1]
+     
+    df_out['Slack(UTC)'] = pd.to_datetime(pd.Series(sorted_slack_times))
+    
+    if args.output:
+       df_out.to_csv('Output/L4buoy_tides.txt', sep=' ', index=False, float_format='%.2f')
+    
+    sys.exit(0)
   
 # Run script if called from command line.   
 if __name__=='__main__':

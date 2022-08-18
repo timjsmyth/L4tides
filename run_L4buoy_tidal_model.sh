@@ -1,7 +1,8 @@
 #!/usr/bin/bash
 ## declare an array variable holding the locations
 declare -a locations=("Plymouth_L4")
-slackofile=/tmp/L4_buoy_slack_today_FRENCH.txt
+L4tidesfile_py=Output/L4buoy_tides.txt
+slackofile=/tmp/L4buoy_slack_today_FRENCH.txt
 
 # Issues with the Profiler only operating on the Devil's time
 # The following assumes that the UK and France shift to Daylight Savings simultaneously
@@ -35,16 +36,17 @@ END=`date --date='7 day' +%Y-%m-%d`
 #START="2023-01-01"
 #END="2023-06-30"
 
+# Make sure that the python output text file is refreshed
+/bin/rm -rf $L4tidesfile_py 
 ## loop through the locations array
 for location in "${locations[@]}"
 do
    echo "$location"
    ## Run the L4buoy_tides.py model
-   /bin/python3 L4buoy_tides.py -t -o -start $START -end $END #-TC
-
+   /bin/python3 L4buoy_tides.py -o -start $START -end $END 
 done
 
-cat Output/L4buoy_tides.txt | sed -e 's/\"//g' > /tmp/L4buoy_tides.txt
+cat $L4tidesfile_py | sed -e 's/\"//g' > /tmp/L4buoy_tides.txt
 
 # TODAY
 echo "======================="
