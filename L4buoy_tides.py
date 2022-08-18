@@ -25,7 +25,7 @@ import calendar
 
 import subprocess
 from dateutil import parser
-import SpectralSplit
+#import SpectralSplit
 import scipy.integrate
 import os
 import sys
