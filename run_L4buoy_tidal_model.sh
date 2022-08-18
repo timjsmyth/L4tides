@@ -27,7 +27,7 @@ FROFF=`echo - | awk -v SECS=$DIFF '{printf "%d",SECS/(60*60)}'`
 echo "Current time"
 date
 
-# Run model for a week
+# Run model for a week starting one day before current
 # Start date
 START=`date --date='-1 day' +%Y-%m-%d`
 # End date
