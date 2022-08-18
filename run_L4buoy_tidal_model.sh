@@ -4,7 +4,7 @@ declare -a locations=("Plymouth_L4")
 L4tidesfile_py=Output/L4buoy_tides.txt
 slackofile=/tmp/L4buoy_slack_today_FRENCH.txt
 
-# Issues with the Profiler only operating on the Devil's time
+# Issues with the profiler only operating on the Devil's time
 # The following assumes that the UK and France shift to Daylight Savings simultaneously
 dst_start_end_file=Required/daylight_saving_start_end.txt
 YYYY=`date --utc +%Y`
