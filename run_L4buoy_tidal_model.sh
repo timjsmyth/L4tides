@@ -58,19 +58,25 @@ echo "======================="
 
 # Slack water
 echo "Today's times of predicted slack water @L4 (UTC)"
-grep $TODAY /tmp/L4buoy_tides.txt | awk '{print $5,$6}'
-grep $TODAY /tmp/L4buoy_tides.txt | awk '{print $5,$6}' > /tmp/L4buoy_slack_today.txt
+#grep $TODAY /tmp/L4buoy_tides.txt | awk '{print $5,$6}'
+#grep $TODAY /tmp/L4buoy_tides.txt | awk '{print $5,$6}' > /tmp/L4buoy_slack_today.txt
+cat /tmp/L4buoy_tides.txt | awk '{if(NF==6){print $5,$6}}' | grep $TODAY
+cat /tmp/L4buoy_tides.txt | awk '{if(NF==6){print $5,$6}}' | grep $TODAY > /tmp/L4buoy_slack_today.txt
 echo "======================="
 
 echo "Slack offset in French time from God's own time(UTC): $FROFF"
 /bin/rm -rf $slackofile
 while read entry
 do
-   DATETIME=`echo "$entry" | awk '{print $1,$2}'`
-   FRENCHTIME=`date -d"$DATETIME $FROFF hour" +"%Y-%m-%d %H:%M:%S"`
-   echo $FRENCHTIME
-   echo $FRENCHTIME >> $slackofile
-done < /tmp/L4buoy_slack_today.txt
+   DATETIME=`echo "$entry" | awk '{if (NF==6){print $5,$6}}'`
+   if [[ ! -z "$DATETIME" ]]; then
+      FRENCHTIME=`date -d"$DATETIME $FROFF hour" +"%Y-%m-%d %H:%M:%S"`
+      echo $FRENCHTIME >> $slackofile
+   fi
+done < /tmp/L4buoy_tides.txt
+cat $slackofile | grep $TODAY | sort -u 
+cat $slackofile | grep $TODAY | sort -u > /tmp/tmp_slack.txt
+/bin/mv /tmp/tmp_slack.txt $slackofile 
 echo "Written to $slackofile"
 
 exit 0
