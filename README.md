@@ -8,5 +8,7 @@ Based on the time of high water and the magnitude of that tide, the time of slac
 The wrapper script run_L4buoy_tidal_model.sh then adds the offset to UTC in French time to make the output compatible with the profiling winch on the buoy.  This is also a function of the time of year (UTC vs. BST) which is accounted for in the code.
 
 --
+
 Tim Smyth - PML
+
 18 August 2022 
