@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Authour: Adam Wright
+# Author: Adam Wright and Tim Smyth 
 # Purpose: Calculate tides at L4 so can time dives to high and low water
 
 # Import packages
@@ -10,22 +10,13 @@ from scipy.signal import argrelextrema
 
 import numpy as np
 import datetime
-from matplotlib import rc
-from matplotlib.ticker import ScalarFormatter
-import matplotlib.pyplot as plt
 import pandas as pd
 import argparse
-import astropy.utils.iers
-import astropy.units as u
-from astropy.time import Time
-from astropy.coordinates import EarthLocation, AltAz, get_moon, Angle
-from astroplan import moon
 import timeit
 import calendar
 
 import subprocess
 from dateutil import parser
-#import SpectralSplit
 import scipy.integrate
 import os
 import sys
