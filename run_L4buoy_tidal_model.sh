@@ -9,7 +9,7 @@
 # converting this into French time zone.
 # 
 # Directory this is operating in
-execdir=/home/pi/Tides/L4tides
+execdir=/home/pi/profile_manager/utils/L4tides
 
 ## declare an array variable holding the locations
 declare -a locations=("Plymouth_L4")
