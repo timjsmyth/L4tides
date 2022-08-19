@@ -1,0 +1,1 @@
+0 22,23 * * * /home/pi/Tides/L4tides/run_L4buoy_tidal_model.sh >> /home/pi/Tides/L4tides/Logs/L4slack.log 2>&1

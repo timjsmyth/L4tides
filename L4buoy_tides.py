@@ -60,6 +60,7 @@ def main():
 ##  Create Parser instructions
     aparser = argparse.ArgumentParser()
     aparser.add_argument("-o", "--output", action="store_true", help="generate output file(s)")
+    aparser.add_argument("-idir", "--idir", action="store", type=str, help="Input directory -idir <DIRNAME>")
 
     # MODEL PARAMETERS
     aparser.add_argument("-start", "--start", action="store", type=str, help="Start Date (yyyy-mm-dd)")
@@ -69,6 +70,11 @@ def main():
 
     # Assign empty variables
     TL = []; t = []; waterdepth = []; tide_h = []; ftide_h = []; Zc = []
+
+    if args.idir:
+       indir = args.idir
+    else:
+       indir = os.getcwd()
 
     if args.start:
        start_date = args.start; print("Start date: ", start_date)
@@ -107,17 +113,17 @@ def main():
     Tide_fname = "TidePlymouth_L1.csv"
     
     # Check to see if the harmonics file exists
-    L4_harmonics_file_exists = os.path.exists('L4_tidal_harmonics.pkl')
+    L4_harmonics_file_exists = os.path.exists(indir+"/L4_tidal_harmonics.pkl")
     if L4_harmonics_file_exists:
        print('L4 harmonics file exists as pkl')
-       with open('L4_tidal_harmonics.pkl', 'rb') as bunch:
+       with open(indir+"/L4_tidal_harmonics.pkl", 'rb') as bunch:
           c = pickle.load(bunch)	
     else:
        ##  Read in tidal data 
        ##  https://www.tide-forecast.com/ - good site for eyeballing how accurately the tide is recreated.
        print('Running tidal model...')
        print(' using tidegauge data to generate tidal coefficients')
-       tidepath = os.getcwd() + "/Required/TideGauge/" + Tide_fname # path of data file output
+       tidepath = indir+ "/Required/TideGauge/" + Tide_fname # path of data file output
        tides_ = pd.read_csv(tidepath, delimiter=',', engine='python') #usecols=np.arange(16,48), engine='python')
        df = pd.DataFrame(tides_)
        for i in range(len(tides_)):
@@ -149,7 +155,7 @@ def main():
     		       conf_int='linear',
     		       Rayleigh_min=0.95)
     
-       with open('L4_tidal_harmonics.pkl', 'wb') as bunch:
+       with open(indir+"/L4_tidal_harmonics.pkl", 'wb') as bunch:
           pickle.dump(c, bunch, protocol=pickle.HIGHEST_PROTOCOL)
 
     # 1. Generate list of date & time for time period of interest at 1 hour resolution
@@ -204,7 +210,7 @@ def main():
     df_out['Slack(UTC)'] = pd.to_datetime(pd.Series(sorted_slack_times))
     
     if args.output:
-       df_out.to_csv('Output/L4buoy_tides.txt', sep=' ', index=False, float_format='%.2f')
+       df_out.to_csv(indir+'/Output/L4buoy_tides.txt', sep=' ', index=False, float_format='%.2f')
     
     sys.exit(0)
   

@@ -1,0 +1,31 @@
+Current time
+Fri 19 Aug 2022 01:37:01 PM UTC
+Plymouth_L4
+Start date:  2022-08-18
+End date:  2022-08-26
+Start date 2022-08-18 00:00:00
+End date 2022-08-26 00:00:00
+L4 harmonics file exists as pkl
+prep/calcs ... done.
+ finished tidal model
+=======================
+Today's times of Hi/Lo water @Devonport (UTC)
+2022-08-18 22:02:00 4.94 High
+2022-08-19 04:18:00 1.73 Low
+2022-08-19 10:28:00 4.73 High
+2022-08-19 16:37:00 1.97 Low
+2022-08-19 22:47:00 4.71 High
+=======================
+Today's times of predicted slack water @L4 (UTC)
+2022-08-19 00:23:08
+2022-08-19 06:57:36
+2022-08-19 12:47:02
+2022-08-19 19:16:10
+=======================
+Slack offset in French time from God's own time(UTC): 2
+2022-08-19 02:23:08
+2022-08-19 08:57:36
+2022-08-19 14:47:02
+2022-08-19 21:16:10
+Written to /tmp/L4buoy_slack_today_FRENCH.txt
+=======================
